@@ -1,8 +1,8 @@
 {
   "name": "nhac-nho-plus",
-  "version": "1.0.0",
+  "version": "1.3.0",
   "private": true,
-  "description": "Ung dung nhac viec ca nhan tren iOS",
+  "description": "Ung dung bao thuc nhac viec linh hoat tren iOS",
   "scripts": {
     "build": "echo 'Web assets ready'",
     "sync": "npx cap sync ios"
