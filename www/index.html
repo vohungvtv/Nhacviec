@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="NhắcNhở+" />
+  <link rel="apple-touch-icon" href="icon.png" />
+  <link rel="manifest" href="manifest.json" />
+  <title>NhắcNhở+</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    @keyframes ringShake {
+      0%, 100% { transform: rotate(0deg); }
+      20% { transform: rotate(-15deg); }
+      40% { transform: rotate(15deg); }
+      60% { transform: rotate(-10deg); }
+      80% { transform: rotate(10deg); }
+    }
+    .animate-ring { animation: ringShake 0.6s infinite; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col max-w-md mx-auto relative">
+
+  <!-- Header -->
+  <header class="px-5 pt-6 pb-4 flex items-center justify-between border-b border-slate-800/80 bg-slate-950/90 sticky top-0 z-10 backdrop-blur">
+    <div>
+      <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">NhắcNhở+</h1>
+      <p id="todayDate" class="text-xs text-slate-400 mt-0.5"></p>
+    </div>
+    <button onclick="requestAllPermissions()" id="permBtn" class="px-3 py-1.5 rounded-full text-xs font-medium bg-blue-600/20 text-blue-400 border border-blue-500/30 active:scale-95 transition">
+      🔔 Cấp quyền báo
+    </button>
+  </header>
+
+  <!-- Danh sách công việc -->
+  <main class="flex-1 px-4 py-4 pb-28 overflow-y-auto space-y-3" id="taskList">
+    <!-- Render bằng JS từ IndexedDB -->
+  </main>
+
+  <!-- Nút Thêm nhanh -->
+  <div class="fixed bottom-6 inset-x-0 max-w-md mx-auto px-5 z-20">
+    <button onclick="openModal()" class="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold text-white shadow-lg shadow-blue-600/30 active:scale-95 transition flex items-center justify-center gap-2 text-base">
+      <span class="text-xl leading-none">+</span> Thêm lịch nhắc mới
+    </button>
+  </div>
+
+  <!-- Modal Thêm việc -->
+  <div id="addModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-30 hidden items-end sm:items-center justify-center">
+    <div class="bg-slate-900 w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 border-t sm:border border-slate-800 space-y-4">
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-bold">Tạo nhắc nhở mới</h2>
+        <button onclick="closeModal()" class="text-slate-400 text-2xl leading-none">&times;</button>
+      </div>
+
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">Nội dung công việc</label>
+        <input type="text" id="taskTitle" placeholder="VD: Họp giao ban lúc 9h..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
+      </div>
+
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">Thời gian nhắc</label>
+        <input type="datetime-local" id="taskTime" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500" />
+        <div class="flex gap-2 mt-2 overflow-x-auto pb-1">
+          <button type="button" onclick="quickTime(1)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs text-cyan-400 whitespace-nowrap">+1 phút (Test)</button>
+          <button type="button" onclick="quickTime(15)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs text-slate-300 whitespace-nowrap">+15 phút</button>
+          <button type="button" onclick="quickTime(60)" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs text-slate-300 whitespace-nowrap">+1 giờ</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">Nhạc chuông báo thức</label>
+        <div class="flex gap-2">
+          <select id="taskSound" class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white text-sm focus:outline-none">
+            <option value="classic">⏰ Chuông điện tử cổ điển</option>
+            <option value="chime">🔔 Chuông ngân nhẹ nhàng</option>
+            <option value="nature">🐦 Tiếng chim ban mai</option>
+            <option value="urgent">🚨 Còi báo khẩn cấp</option>
+          </select>
+          <button type="button" onclick="previewSound()" class="px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm font-medium text-amber-400 active:scale-95">
+            ▶ Thử
+          </button>
+        </div>
+      </div>
+
+      <button onclick="saveTask()" class="w-full py-3.5 rounded-xl bg-blue-600 font-semibold text-white active:scale-95 transition mt-2">
+        Lưu lịch nhắc
+      </button>
+    </div>
+  </div>
+
+  <!-- Màn hình Báo thức toàn màn hình khi đến giờ -->
+  <div id="alarmOverlay" class="fixed inset-0 bg-gradient-to-b from-blue-950 via-slate-950 to-slate-950 z-50 hidden flex-col items-center justify-between p-8 text-center">
+    <div class="mt-12">
+      <div class="w-24 h-24 rounded-full bg-blue-500/20 border border-blue-400/40 flex items-center justify-center mx-auto mb-6 animate-ring">
+        <span class="text-5xl">⏰</span>
+      </div>
+      <p class="text-blue-400 uppercase tracking-widest text-xs font-bold mb-2">ĐẾN GIỜ THỰC HIỆN</p>
+      <h2 id="alarmTitle" class="text-2xl font-bold text-white px-4"></h2>
+      <p id="alarmTimeText" class="text-slate-400 text-sm mt-2"></p>
+    </div>
+
+    <div class="w-full space-y-3 mb-8">
+      <button onclick="completeAlarmTask()" class="w-full py-4 rounded-2xl bg-emerald-500 text-slate-950 font-bold text-lg shadow-lg shadow-emerald-500/30 active:scale-95 transition">
+        ✓ Đã xong
+      </button>
+      <button onclick="snoozeAlarmTask()" class="w-full py-3.5 rounded-2xl bg-slate-800 text-slate-200 font-medium active:scale-95 transition">
+        💤 Báo lại sau 5 phút
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const DB_NAME = 'NhacNhoPlusDB';
+    const STORE_NAME = 'tasks';
+    let db = null;
+    let tasks = [];
+    let activeAlarmTask = null;
+    let alarmLoopTimer = null;
+    let audioCtx = null;
+
+    function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onupgradeneeded = (e) => {
+          const database = e.target.result;
+          if (!database.objectStoreNames.contains(STORE_NAME)) {
+            database.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          }
+        };
+        request.onsuccess = (e) => {
+          db = e.target.result;
+          resolve(db);
+        };
+        request.onerror = (e) => reject(e.target.error);
+      });
+    }
+
+    async function loadTasksFromDB() {
+      if (!db) await initDB();
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.getAll();
+        req.onsuccess = () => {
+          tasks = (req.result || []).sort((a, b) => a.time - b.time);
+          renderTasks();
+          resolve(tasks);
+        };
+      });
+    }
+
+    async function saveTaskToDB(task) {
+      if (!db) await initDB();
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).put(task);
+        tx.oncomplete = () => resolve();
+      });
+    }
+
+    async function deleteTaskFromDB(id) {
+      if (!db) await initDB();
+      return new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        tx.objectStore(STORE_NAME).delete(id);
+        tx.oncomplete = () => resolve();
+      });
+    }
+
+    function playTone(type) {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === 'classic') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(880, now);
+        osc.frequency.setValueAtTime(1100, now + 0.15);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      } else if (type === 'chime') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.2);
+        osc.frequency.setValueAtTime(783.99, now + 0.4);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+        osc.start(now);
+        osc.stop(now + 1.2);
+      } else if (type === 'nature') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1400, now);
+        osc.frequency.exponentialRampToValueAtTime(2200, now + 0.12);
+        osc.frequency.exponentialRampToValueAtTime(1600, now + 0.25);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      } else {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.linearRampToValueAtTime(1200, now + 0.3);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      }
+    }
+
+    function previewSound() {
+      const sound = document.getElementById('taskSound').value;
+      playTone(sound);
+    }
+
+    async function scheduleNativeNotification(task) {
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
+        const { LocalNotifications } = window.Capacitor.Plugins;
+        await LocalNotifications.schedule({
+          notifications: [{
+            id: Math.floor(task.id % 2147483647),
+            title: '⏰ NhắcNhở+',
+            body: task.title,
+            schedule: { at: new Date(task.time), allowWhileIdle: true },
+            sound: 'beep.wav'
+          }]
+        });
+      }
+    }
+
+    async function cancelNativeNotification(taskId) {
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
+        const { LocalNotifications } = window.Capacitor.Plugins;
+        await LocalNotifications.cancel({
+          notifications: [{ id: Math.floor(taskId % 2147483647) }]
+        });
+      }
+    }
+
+    async function requestAllPermissions() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) {
+        const { LocalNotifications } = window.Capacitor.Plugins;
+        const res = await LocalNotifications.requestPermissions();
+        if (res.display === 'granted') {
+          document.getElementById('permBtn').textContent = '✓ Đã bật báo thức';
+        }
+      } else if ('Notification' in window) {
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') {
+          document.getElementById('permBtn').textContent = '✓ Đã cấp quyền';
+        }
+      }
+    }
+
+    function renderTasks() {
+      const list = document.getElementById('taskList');
+      if (tasks.length === 0) {
+        list.innerHTML = `
+          <div class="text-center py-16 text-slate-500">
+            <p class="text-4xl mb-3">📝</p>
+            <p class="text-sm">Chưa có lịch nhắc nào.<br>Nhấn nút bên dưới để thêm việc mới.</p>
+          </div>`;
+        return;
+      }
+
+      list.innerHTML = tasks.map(t => {
+        const d = new Date(t.time);
+        const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' • ' + d.toLocaleDateString('vi-VN');
+        const isOverdue = !t.done && t.time < Date.now();
+        return `
+          <div class="p-4 rounded-2xl bg-slate-900 border ${t.done ? 'border-slate-800/50 opacity-50' : (isOverdue ? 'border-rose-500/40' : 'border-slate-800')} flex items-center justify-between gap-3">
+            <div class="flex items-start gap-3 flex-1 min-w-0">
+              <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleDone(${t.id})" class="mt-1 w-5 h-5 rounded-full accent-blue-500" />
+              <div class="min-w-0 flex-1">
+                <p class="font-medium text-base truncate ${t.done ? 'line-through text-slate-500' : 'text-slate-100'}">${t.title}</p>
+                <p class="text-xs mt-1 ${isOverdue ? 'text-rose-400 font-medium' : 'text-slate-400'}">${timeStr}</p>
+              </div>
+            </div>
+            <button onclick="removeTask(${t.id})" class="p-2 text-slate-500 hover:text-rose-400">🗑</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openModal() {
+      document.getElementById('addModal').classList.remove('hidden');
+      document.getElementById('addModal').classList.add('flex');
+      quickTime(15);
+    }
+
+    function closeModal() {
+      document.getElementById('addModal').classList.add('hidden');
+      document.getElementById('addModal').classList.remove('flex');
+    }
+
+    function quickTime(mins) {
+      const d = new Date(Date.now() + mins * 60000);
+      const tzOffset = d.getTimezoneOffset() * 60000;
+      document.getElementById('taskTime').value = new Date(d - tzOffset).toISOString().slice(0, 16);
+    }
+
+    async function saveTask() {
+      const title = document.getElementById('taskTitle').value.trim();
+      const timeVal = document.getElementById('taskTime').value;
+      const sound = document.getElementById('taskSound').value;
+      if (!title || !timeVal) return alert('Vui lòng nhập nội dung và thời gian!');
+
+      const newTask = {
+        id: Date.now(),
+        title,
+        time: new Date(timeVal).getTime(),
+        sound,
+        done: false,
+        notified: false
+      };
+
+      await saveTaskToDB(newTask);
+      await scheduleNativeNotification(newTask);
+      document.getElementById('taskTitle').value = '';
+      closeModal();
+      await loadTasksFromDB();
+    }
+
+    async function toggleDone(id) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+      task.done = !task.done;
+      await saveTaskToDB(task);
+      if (task.done) await cancelNativeNotification(id);
+      await loadTasksFromDB();
+    }
+
+    async function removeTask(id) {
+      await deleteTaskFromDB(id);
+      await cancelNativeNotification(id);
+      await loadTasksFromDB();
+    }
+
+    setInterval(async () => {
+      const now = Date.now();
+      for (const task of tasks) {
+        if (!task.done && !task.notified && task.time <= now) {
+          task.notified = true;
+          await saveTaskToDB(task);
+          triggerAlarmUI(task);
+          break;
+        }
+      }
+    }, 1000);
+
+    function triggerAlarmUI(task) {
+      activeAlarmTask = task;
+      document.getElementById('alarmTitle').textContent = task.title;
+      document.getElementById('alarmTimeText').textContent = new Date(task.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      const overlay = document.getElementById('alarmOverlay');
+      overlay.classList.remove('hidden');
+      overlay.classList.add('flex');
+
+      if (navigator.vibrate) navigator.vibrate([500, 300, 500, 300, 500]);
+      playTone(task.sound);
+      alarmLoopTimer = setInterval(() => playTone(task.sound), 1500);
+
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('⏰ NhắcNhở+', { body: task.title });
+      }
+    }
+
+    async function completeAlarmTask() {
+      clearInterval(alarmLoopTimer);
+      document.getElementById('alarmOverlay').classList.add('hidden');
+      document.getElementById('alarmOverlay').classList.remove('flex');
+      if (activeAlarmTask) {
+        activeAlarmTask.done = true;
+        await saveTaskToDB(activeAlarmTask);
+        activeAlarmTask = null;
+        await loadTasksFromDB();
+      }
+    }
+
+    async function snoozeAlarmTask() {
+      clearInterval(alarmLoopTimer);
+      document.getElementById('alarmOverlay').classList.add('hidden');
+      document.getElementById('alarmOverlay').classList.remove('flex');
+      if (activeAlarmTask) {
+        activeAlarmTask.time = Date.now() + 5 * 60000;
+        activeAlarmTask.notified = false;
+        await saveTaskToDB(activeAlarmTask);
+        await scheduleNativeNotification(activeAlarmTask);
+        activeAlarmTask = null;
+        await loadTasksFromDB();
+      }
+    }
+
+    document.getElementById('todayDate').textContent = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+    loadTasksFromDB();
+  </script>
+</body>
+</html>
